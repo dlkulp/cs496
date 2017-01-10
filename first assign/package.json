@@ -1,0 +1,27 @@
+{
+  "name": "first",
+  "version": "0.0.1",
+  "description": "the first assignment",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo 'test'",
+    "start": "node app.js",
+    "deploy": "gcloud app deploy app.yaml"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dlkulp/cs496.git"
+  },
+  "keywords": [
+    "mobile"
+  ],
+  "author": "Damian Kulp",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dlkulp/cs496/issues"
+  },
+  "homepage": "https://github.com/dlkulp/cs496#readme",
+  "dependencies": {
+    "express": "^4.14.0"
+  }
+}
