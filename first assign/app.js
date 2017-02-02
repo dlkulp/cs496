@@ -53,14 +53,14 @@ app.get('/', (req, res) => {
 // Customer stuff
 app.route('/customer/:customerId')
 	.get((req, res) => {
-		let custId = req.param("customerId");
+		let custId = req.params.customerId;
 		datastore.get(custId)
 			.then(() => {
 				// Do something?
 			});
 	})
 	.delete((req, res) => {
-		let custId = req.param("customerId");
+		let custId = req.params.customerId;
 		datastore.delete(custId)
 			.then(() => {
 				// Do something?
@@ -76,14 +76,14 @@ app.route('/customer/:customerId')
 
 app.route('/book/:bookId')
 	.get((req, res) => {
-		let bookId = req.param("bookId");
+		let bookId = req.params.bookId;
 		datastore.get(bookId)
 			.then(() => {
 				// Do something?
 			});
 	})
 	.delete((req, res) => {
-		let bookId = req.param("bookId");
+		let bookId = req.params.bookId;
 		datastore.delete(bookId)
 			.then(() => {
 				// Do something?
@@ -102,7 +102,7 @@ app.route('/book/:bookId')
 // Check Books in and out
 app.route('/customers/:customerId/books/:bookId')
 	.put((req, res) => {
-		let [custId, bookId] = [req.param("customerId"), req.param("bookId")];
+		let [custId, bookId] = [req.params.customerId, req.params.bookId];
 		datastore.get(bookId)
 			.then ((books) => {
 				if (books[0].checkedIn) {
@@ -119,7 +119,7 @@ app.route('/customers/:customerId/books/:bookId')
 			});
 	})
 	.delete((req, res) => {
-		let [custId, bookId] = [req.param("customerId"), req.param("bookId")];
+		let [custId, bookId] = [req.params.customerId, req.params.bookId];
 		datastore.get(bookId)
 			.then ((books) => {
 				if (!books[0].checkedIn) {
