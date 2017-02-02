@@ -67,7 +67,7 @@ app.route('/customer/:customerId')
 			});
 	})
 	.post((req, res) => {
-		let [id, name, balance, checked_out] = [req.body.id, req.body.name, req.body.balance, req.body.checked_out];
+		let [id, name, balance, checked_out] = [req.params.id, req.body.name, req.body.balance, req.body.checked_out];
 		datastore.insert(new Customer(id, name, balance, checked_out).getJSON());
 	})
 	.patch((req, res) => {
@@ -90,7 +90,7 @@ app.route('/book/:bookId')
 			});
 	})
 	.post((req, res) => {
-		let [id, title, isbn, genre, author, checkedIn] = [req.body.id, req.body.title, req.body.isbn, req.body.genre, req.body.author, req.body.checkedIn];
+		let [id, title, isbn, genre, author, checkedIn] = [req.params.id, req.body.title, req.body.isbn, req.body.genre, req.body.author, req.body.checkedIn];
 		datastore.insert(new Book(id, title, isbn, genre, author, checkedIn).getJSON());
 	})
 	.patch((req, res) => {
