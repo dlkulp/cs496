@@ -3,6 +3,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const app = express();
+app.enable('trust proxy');
 const Datastore = require('@google-cloud/datastore');
 const projectId = "cs496-155216";
 const datastore = Datastore({

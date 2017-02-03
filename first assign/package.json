@@ -17,6 +17,9 @@
   ],
   "author": "Damian Kulp",
   "license": "MIT",
+  "engines": {
+    "node": ">=4.3.2"
+  },
   "bugs": {
     "url": "https://github.com/dlkulp/cs496/issues"
   },
