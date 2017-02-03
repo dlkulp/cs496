@@ -55,46 +55,52 @@ app.route('/customer/:customerId')
 	.get((req, res) => {
 		let custId = req.params.customerId;
 		datastore.get(custId)
-			.then(() => {
-				// Do something?
+			.then((customer) => {
+				res.send(customer[0]);
 			});
 	})
 	.delete((req, res) => {
 		let custId = req.params.customerId;
 		datastore.delete(custId)
 			.then(() => {
-				// Do something?
+				res.send(`$(custId) removed from datastore`);
 			});
 	})
 	.post((req, res) => {
 		let [id, name, balance, checked_out] = [req.params.id, req.body.name, req.body.balance, req.body.checked_out];
-		datastore.insert(new Customer(id, name, balance, checked_out).getJSON());
+		datastore.insert(new Customer(id, name, balance, checked_out).getJSON())
+			.then(() => {
+				res.send(`${name} added to datastore!`);
+			});
 	})
 	.patch((req, res) => {
-
+		res.send("patch customer");
 	});
 
 app.route('/book/:bookId')
 	.get((req, res) => {
 		let bookId = req.params.bookId;
 		datastore.get(bookId)
-			.then(() => {
-				// Do something?
+			.then((book) => {
+				res.send(book[0]);
 			});
 	})
 	.delete((req, res) => {
 		let bookId = req.params.bookId;
 		datastore.delete(bookId)
 			.then(() => {
-				// Do something?
+				res.send(`$(bookId) removed from datastore`);
 			});
 	})
 	.post((req, res) => {
 		let [id, title, isbn, genre, author, checkedIn] = [req.params.id, req.body.title, req.body.isbn, req.body.genre, req.body.author, req.body.checkedIn];
-		datastore.insert(new Book(id, title, isbn, genre, author, checkedIn).getJSON());
+		datastore.insert(new Book(id, title, isbn, genre, author, checkedIn).getJSON())
+			.then(() => {
+				res.send(`$(title) added to datastore`);
+			})
 	})
 	.patch((req, res) => {
-
+		res.send("patch book");
 	});
 
 	//app.query
