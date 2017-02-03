@@ -45,7 +45,7 @@ class Customer {
 	}
 }
 
-// Print stuff
+// Home
 app.get('/', (req, res) => {
 	res.status(200).send(new Date());
 });
@@ -54,24 +54,39 @@ app.get('/', (req, res) => {
 app.route('/customer/:customerId')
 	.get((req, res) => {
 		let custId = req.params.customerId;
-		datastore.get(custId)
-			.then((customer) => {
-				res.status(200).send(customer[0]);
-			});
+		if (typeof datastore !== "undefined") {
+			datastore.get(custId)
+				.then((customer) => {
+					res.status(200).send(customer[0]);
+				});
+		}
+		else {
+			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		}
 	})
 	.delete((req, res) => {
 		let custId = req.params.customerId;
-		datastore.delete(custId)
-			.then(() => {
-				res.status(200).send(`$(custId) removed from datastore`);
-			});
+		if (typeof datastore !== "undefined") {
+			datastore.delete(custId)
+				.then(() => {
+					res.status(200).send(`$(custId) removed from datastore`);
+				});
+		}
+		else {
+			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		}
 	})
 	.post((req, res) => {
 		let [id, name, balance, checked_out] = [req.params.id, req.body.name, req.body.balance, req.body.checked_out];
-		datastore.insert(new Customer(id, name, balance, checked_out).getJSON())
-			.then(() => {
-				res.status(200).send(`${name} added to datastore!`);
-			});
+		if (typeof datastore !== "undefined") {
+			datastore.insert(new Customer(id, name, balance, checked_out).getJSON())
+				.then(() => {
+					res.status(200).send(`${name} added to datastore!`);
+				});
+		}
+		else {
+			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		}
 	})
 	.patch((req, res) => {
 		res.status(200).send("patch customer");
@@ -80,24 +95,39 @@ app.route('/customer/:customerId')
 app.route('/book/:bookId')
 	.get((req, res) => {
 		let bookId = req.params.bookId;
-		datastore.get(bookId)
-			.then((book) => {
-				res.status(200).send(book[0]);
-			});
+		if (typeof datastore !== "undefined") {
+			datastore.get(bookId)
+				.then((book) => {
+					res.status(200).send(book[0]);
+				});
+		}
+		else {
+			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		}
 	})
 	.delete((req, res) => {
 		let bookId = req.params.bookId;
-		datastore.delete(bookId)
-			.then(() => {
-				res.status(200).send(`$(bookId) removed from datastore`);
-			});
+		if (typeof datastore !== "undefined") {
+			datastore.delete(bookId)
+				.then(() => {
+					res.status(200).send(`$(bookId) removed from datastore`);
+				});
+		}
+		else {
+			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		}
 	})
 	.post((req, res) => {
 		let [id, title, isbn, genre, author, checkedIn] = [req.params.id, req.body.title, req.body.isbn, req.body.genre, req.body.author, req.body.checkedIn];
-		datastore.insert(new Book(id, title, isbn, genre, author, checkedIn).getJSON())
-			.then(() => {
-				res.status(200).send(`$(title) added to datastore`);
-			})
+		if (typeof datastore !== "undefined") {
+			datastore.insert(new Book(id, title, isbn, genre, author, checkedIn).getJSON())
+				.then(() => {
+					res.status(200).send(`$(title) added to datastore`);
+				});
+		}
+		else {
+			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		}
 	})
 	.patch((req, res) => {
 		res.status(200).send("patch book");
@@ -107,42 +137,52 @@ app.route('/book/:bookId')
 app.route('/customers/:customerId/books/:bookId')
 	.put((req, res) => {
 		let [custId, bookId] = [req.params.customerId, req.params.bookId];
-		datastore.get(bookId)
-			.then ((books) => {
-				if (books[0].checkedIn) {
-					datastore.get(custId)
-						.then((customers) => {
-							customers[0].checked_out[customers[0].checked_out.length] = bookId;
-							datastore.update({key: custId, checked_out: customers[0].checked_out})
-								.then(() => {
-									// Do something?
-								});
-						});
-					datastore.update({key: bookId, checkedIn: false});
-				}
-			});
+		if (typeof datastore !== "undefined") {
+			datastore.get(bookId)
+				.then ((books) => {
+					if (books[0].checkedIn) {
+						datastore.get(custId)
+							.then((customers) => {
+								customers[0].checked_out[customers[0].checked_out.length] = bookId;
+								datastore.update({key: custId, checked_out: customers[0].checked_out})
+									.then(() => {
+										// Do something?
+									});
+							});
+						datastore.update({key: bookId, checkedIn: false});
+					}
+				});
+		}
+		else {
+			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		}
 	})
 	.delete((req, res) => {
 		let [custId, bookId] = [req.params.customerId, req.params.bookId];
-		datastore.get(bookId)
-			.then ((books) => {
-				if (!books[0].checkedIn) {
-					datastore.get(custId)
-						.then((customers) => {
-							for (let i = 0; i < customers[0].checked_out.length; i++) 
-								if (customers[0].checked_out[i] == bookId) {
-									customers[0].checked_out.splice(i, 1);
-									break;
-								}
+		if (typeof datastore !== "undefined") {
+			datastore.get(bookId)
+				.then ((books) => {
+					if (!books[0].checkedIn) {
+						datastore.get(custId)
+							.then((customers) => {
+								for (let i = 0; i < customers[0].checked_out.length; i++) 
+									if (customers[0].checked_out[i] == bookId) {
+										customers[0].checked_out.splice(i, 1);
+										break;
+									}
 
-							datastore.update({key: custId, checked_out: customers[0].checked_out})
-								.then(() => {
-									// Do something?
-								});
-						});
-					datastore.update({key: bookId, checkedIn: true});
-				}
-			});
+								datastore.update({key: custId, checked_out: customers[0].checked_out})
+									.then(() => {
+										// Do something?
+									});
+							});
+						datastore.update({key: bookId, checkedIn: true});
+					}
+				});
+		}
+		else {
+			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		}
 	});
 
 // Start server and list on port
