@@ -25,12 +25,11 @@ class Entity {
 }
 
 class Book {
-	constructor(id, title, isbn, genre, author, checkedIn) {
-		[this.id, this.title, this.isbn, this.genre, this.author, this.checkedIn] = [id, title, isbn, genre, author, checkedIn];
+	constructor(title, isbn, genre, author, checkedIn) {
+		[this.title, this.isbn, this.genre, this.author, this.checkedIn] = [title, isbn, genre, author, checkedIn];
 	}
 	getJSON() {
 		return {
-			"id": this.id,
 			"title": this.title,
 			"isbn": this.isbn,
 			"genre": this.genre,
@@ -41,12 +40,11 @@ class Book {
 }
 
 class Customer {
-	constructor(id, name, balance, checked_out) {
-		[this.id, this.name, this.balance, this.checked_out] = [id, name, balance, checked_out];
+	constructor(name, balance, checked_out) {
+		[this.name, this.balance, this.checked_out] = [name, balance, checked_out];
 	}
 	getJSON() {
 		return {
-			"id": this.id,
 			"name": this.name,
 			"balance": this.balance,
 			"checked_out": this.checked_out
@@ -59,7 +57,10 @@ function httpGet(res, id) {
 	if (typeof datastore !== "undefined") {
 		datastore.get(id)
 			.then((entity) => {
-				res.status(200).send(entity[0]);
+				if (entity.length === 1)
+					res.status(200).send(entity[0]);
+				else
+					res.stat(200).send("");
 			});
 	}
 	else {
@@ -67,7 +68,7 @@ function httpGet(res, id) {
 	}
 }
 
-function httpPost(res, entity, ) {
+function httpPost(res, entity) {
 	if (typeof datastore !== "undefined") {
 		datastore.insert(entity)
 			.then(() => {
@@ -110,10 +111,11 @@ app.route('/customers/:customerId')
 		res.status(200).send("patch customer");
 	});
 app.post('/customers', (req, res) => {
-	let [id, name, balance, checked_out] = [req.params.id, req.body.name, req.body.balance, req.body.checked_out];
-	httpPost(res, new Entity("customer", "name", new Customer(id, name, balance, checked_out).getJSON()));
+	let [name, balance, checked_out] = [req.body.name, req.body.balance, req.body.checked_out];
+	httpPost(res, new Entity("customer", name, new Customer(name, balance, checked_out).getJSON()));
 });
 
+// Books stuff
 app.route('/books/:bookId')
 	.get((req, res) => {
 		let bookId = req.params.bookId;
@@ -127,8 +129,8 @@ app.route('/books/:bookId')
 		res.status(200).send("patch book");
 	});
 app.post('/books', (req, res) => {
-	let [id, title, isbn, genre, author, checkedIn] = [req.params.id, req.body.title, req.body.isbn, req.body.genre, req.body.author, req.body.checkedIn];
-	httpPost(res, new Book(id, title, isbn, genre, author, checkedIn).getJSON());
+	let [title, isbn, genre, author, checkedIn] = [req.body.title, req.body.isbn, req.body.genre, req.body.author, req.body.checkedIn];
+	httpPost(res, new Entity("book", title, new Book(title, isbn, genre, author, checkedIn).getJSON()));
 });
 
 // Check Books in and out
