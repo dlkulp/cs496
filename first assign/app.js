@@ -56,25 +56,25 @@ app.route('/customer/:customerId')
 		let custId = req.params.customerId;
 		datastore.get(custId)
 			.then((customer) => {
-				res.send(customer[0]);
+				res.status(200).send(customer[0]);
 			});
 	})
 	.delete((req, res) => {
 		let custId = req.params.customerId;
 		datastore.delete(custId)
 			.then(() => {
-				res.send(`$(custId) removed from datastore`);
+				res.status(200).send(`$(custId) removed from datastore`);
 			});
 	})
 	.post((req, res) => {
 		let [id, name, balance, checked_out] = [req.params.id, req.body.name, req.body.balance, req.body.checked_out];
 		datastore.insert(new Customer(id, name, balance, checked_out).getJSON())
 			.then(() => {
-				res.send(`${name} added to datastore!`);
+				res.status(200).send(`${name} added to datastore!`);
 			});
 	})
 	.patch((req, res) => {
-		res.send("patch customer");
+		res.status(200).send("patch customer");
 	});
 
 app.route('/book/:bookId')
@@ -82,28 +82,26 @@ app.route('/book/:bookId')
 		let bookId = req.params.bookId;
 		datastore.get(bookId)
 			.then((book) => {
-				res.send(book[0]);
+				res.status(200).send(book[0]);
 			});
 	})
 	.delete((req, res) => {
 		let bookId = req.params.bookId;
 		datastore.delete(bookId)
 			.then(() => {
-				res.send(`$(bookId) removed from datastore`);
+				res.status(200).send(`$(bookId) removed from datastore`);
 			});
 	})
 	.post((req, res) => {
 		let [id, title, isbn, genre, author, checkedIn] = [req.params.id, req.body.title, req.body.isbn, req.body.genre, req.body.author, req.body.checkedIn];
 		datastore.insert(new Book(id, title, isbn, genre, author, checkedIn).getJSON())
 			.then(() => {
-				res.send(`$(title) added to datastore`);
+				res.status(200).send(`$(title) added to datastore`);
 			})
 	})
 	.patch((req, res) => {
-		res.send("patch book");
+		res.status(200).send("patch book");
 	});
-
-	//app.query
 
 // Check Books in and out
 app.route('/customers/:customerId/books/:bookId')
