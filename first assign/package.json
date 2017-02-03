@@ -23,6 +23,7 @@
   "homepage": "https://github.com/dlkulp/cs496#readme",
   "dependencies": {
     "express": "^4.14.0",
-    "body-parser": "1.16.0"
+    "body-parser": "^1.16.0",
+    "@google-cloud/datastore": "^0.7.0"
   }
 }
