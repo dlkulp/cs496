@@ -54,39 +54,39 @@ app.get('/', (req, res) => {
 app.route('/customer/:customerId')
 	.get((req, res) => {
 		let custId = req.params.customerId;
-		if (typeof datastore !== "undefined") {
+		//if (typeof datastore !== "undefined") {
 			datastore.get(custId)
 				.then((customer) => {
 					res.status(200).send(customer[0]);
 				});
-		}
-		else {
-			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
-		}
+		//}
+		//else {
+		//	res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		//}
 	})
 	.delete((req, res) => {
 		let custId = req.params.customerId;
-		if (typeof datastore !== "undefined") {
+		//if (typeof datastore !== "undefined") {
 			datastore.delete(custId)
 				.then(() => {
 					res.status(200).send(`$(custId) removed from datastore`);
 				});
-		}
-		else {
+		//}
+		//else {
 			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
-		}
+		//}
 	})
 	.post((req, res) => {
 		let [id, name, balance, checked_out] = [req.params.id, req.body.name, req.body.balance, req.body.checked_out];
-		if (typeof datastore !== "undefined") {
+		//if (typeof datastore !== "undefined") {
 			datastore.insert(new Customer(id, name, balance, checked_out).getJSON())
 				.then(() => {
 					res.status(200).send(`${name} added to datastore!`);
 				});
-		}
-		else {
+		//}
+		//else {
 			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
-		}
+		//}
 	})
 	.patch((req, res) => {
 		res.status(200).send("patch customer");
