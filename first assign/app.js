@@ -5,10 +5,9 @@ const bodyParser = require('body-parser');
 const app = express();
 app.enable('trust proxy');
 const Datastore = require('@google-cloud/datastore');
-const projectId = "cs496-155216";
-const datastore = Datastore({
-  projectId: projectId
-});
+const datastore = Datastore();
+
+// Allow Params in Body
 app.use(bodyParser.json()); // support json encoded bodies
 app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
 
