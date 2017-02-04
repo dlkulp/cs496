@@ -57,10 +57,7 @@ function httpGet(res, id) {
 	if (typeof datastore !== "undefined") {
 		datastore.get(id)
 			.then((entity) => {
-				if (entity.length === 1)
-					res.status(200).send(entity);
-				else
-					res.stat(200).send("");
+				res.status(200).send(entity);
 			});
 	}
 	else {
