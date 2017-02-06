@@ -58,16 +58,16 @@ class Customer {
 
 // Route Functions
 function httpGet(res, id, kind, multiple) {
-	console.log(`get: ${id}`);
+	console.log("get");
 	if (typeof datastore !== "undefined") {
-		let objKey = datastore.key([kind, id]);
+		let objKey = (!!multiple) ? id : datastore.key([kind, id]);
 		datastore.get(objKey)
-			.then((entity) => {
-				res.status(200).send(entity[0]);
+			.then((entities) => {
+				res.status(200).send((!!multiple) ? entities : entities[0]);
 			})
 			.catch((e) => {
 				console.dir(e);
-				res.status(500).send("Unexpexted Error: 1001: Unable to connect to database");
+				res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
 			});
 	}
 	else
@@ -83,7 +83,22 @@ function httpPost(res, entity) {
 			})
 			.catch((e) => {
 				console.dir(e);
-				res.status(500).send("Unexpexted Error: 1001: Unable to connect to database");
+				res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+			});
+	else
+		res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+}
+
+function httpPut(res, entity) {
+	console.log("put");
+	if (typeof datastore !== "undefined")
+		datastore.upsert(entity.getJSON())
+			.then((ret) => {
+				res.status(200).send(`${entity.key.id} added to datastore!`);
+			})
+			.catch((e) => {
+				console.dir(e);
+				res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
 			});
 	else
 		res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
@@ -99,7 +114,7 @@ function httpDelete(res, id, kind) {
 			})
 			.catch((e) => {
 				console.dir(e);
-				res.status(500).send("Unexpexted Error: 1001: Unable to connect to database");
+				res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
 			});
 	}
 	else
@@ -118,7 +133,7 @@ function httpPatch(res, entity) {
 				if (e.code == 404)
 					res.status(404).send("404 Not found, no entity matches id");
 				else
-					res.status(500).send("Unexpexted Error: 1001: Unable to connect to database");
+					res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
 			});
 	else
 		res.status(500).send("Unexpected Error: 1001: Unable to connect to databse");
@@ -130,18 +145,6 @@ app.get('/', (req, res) => {
 });
 
 // Customer stuff
-app.get('customer/:customerId/books', (req, res) => {
-	// let custId = Number(req.params.customerId);
-	// let objKey = datastore.key([kind, id]);
-	// 	datastore.get(objKey)
-	// 		.then((entity) => {
-				res.status(200)//.send(entity[0]);
-			// })
-			// .catch((e) => {
-			// 	console.dir(e);
-			// 	res.status(500).send("Unexpexted Error: 1001: Unable to connect to database");
-			// });
-});
 app.route('/customers/:customerId')
 	.get((req, res) => {
 		let custId = Number(req.params.customerId);
@@ -155,9 +158,30 @@ app.route('/customers/:customerId')
 		let [custData, custId] = [req.body.customer, Number(req.params.customerId)];
 		httpPatch(res, new Entity("Customer", custData, custId));
 	});
-app.post('/customers', (req, res) => {
-	let [name, balance, checked_out] = [req.body.name, Number(req.body.balance), req.body.checked_out];
-	httpPost(res, new Entity("Customer", new Customer(name, balance, checked_out).getJSON()));
+app.route('/customers')
+	.post((req, res) => {
+		let [name, balance, checked_out] = [req.body.name, Number(req.body.balance), req.body.checked_out];
+		httpPost(res, new Entity("Customer", new Customer(name, balance, checked_out).getJSON()));
+	})
+	.put((req, res) => {
+		let [name, balance, checked_out] = [req.body.name, Number(req.body.balance), req.body.checked_out];
+		httpPut(res, new Entity("Customer", new Customer(name, balance, checked_out).getJSON()));
+	});
+app.get('/customer/:customerId/books', (req, res) => {
+	console.log("get all customer's books");
+	let custId = Number(req.params.customerId);
+	let objKey = datastore.key(["Customer", custId]);
+	datastore.get(objKey)
+		.then((entity) => {
+			let keys = [];
+			for (let i = 0; i < entity[0].checked_out.length; i++)
+				keys[i] = datastore.key(["Book", Number(entity[0].checked_out[i].replace("/books/", ""))]);
+			httpGet(res, keys, "Book", true);
+		})
+		.catch((e) => {
+			console.dir(e);
+			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		});
 });
 
 // Books stuff
@@ -174,9 +198,27 @@ app.route('/books/:bookId')
 		let [bookData, bookId] = [req.body.book, Number(req.params.bookId)];
 		httpPatch(res, new Entity("Book", bookData, bookId));
 	});
-app.post('/books', (req, res) => {
-	let [title, isbn, genre, author, checkedIn] = [req.body.title, req.body.isbn, req.body.genre, req.body.author, req.body.checkedIn];
-	httpPost(res, new Entity("Book", new Book(title, isbn, genre, author, checkedIn).getJSON()));
+app.route('/books')
+	.post((req, res) => {
+		let [title, isbn, genre, author, checkedIn] = [req.body.title, req.body.isbn, req.body.genre, req.body.author, req.body.checkedIn];
+		httpPost(res, new Entity("Book", new Book(title, isbn, genre, author, checkedIn).getJSON()));
+	})
+	.put((req, res) => {
+		let [title, isbn, genre, author, checkedIn] = [req.body.title, req.body.isbn, req.body.genre, req.body.author, req.body.checkedIn];
+		httpPut(res, new Entity("Book", new Book(title, isbn, genre, author, checkedIn).getJSON()));
+	});
+app.get('/books', (req, res) => {
+	console.log("get books by checkIn status");
+	let checkStat = (req.query.checkedIn.toUpperCase() === "TRUE");
+	const query = datastore.createQuery("Book").filter("checkedIn", "=", checkStat);
+	datastore.runQuery(query)
+		.then((entities) => {
+			res.status(200).send(entities[0]);
+		})
+		.catch((e) => {
+			console.dir(e);
+			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		});
 });
 
 // Check Books in and out
@@ -191,7 +233,7 @@ app.route('/customers/:customerId/books/:bookId')
 						books[0].checkedIn = false;
 						datastore.get(datastore.key(["Customer", custId]))
 							.then((customers) => {
-								customers[0].checked_out[customers[0].checked_out.length] = bookId;
+								customers[0].checked_out[customers[0].checked_out.length] = `/books/${bookId}`;
 								datastore.update(customers[0])
 									.then(() => {
 										datastore.update(new Entity("Book", books[0], bookId))
