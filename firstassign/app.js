@@ -4,21 +4,25 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const app = express();
 app.enable('trust proxy');
+// Must put @google-cloud/datastore": "^0.1.1" into dependencies section before uncommenting (package.json is weird about what's allowed for comments)
 const Datastore = require('@google-cloud/datastore');
-const datastore = Datastore();
+const datastore = Datastore({
+	projectId: "cs496-157709"
+});
 
 // Allow Params in Body
-app.use(bodyParser.json()); // support json encoded bodies
+app.use(bodyParser.json({ type: ["json", "+json"]})); // support json encoded bodies
 app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
 
 // Entities
 class Entity {
-	constructor(kind, name, data) {
-		[this.kind, this.name, this.data] = [kind, name, data];
+	constructor(kind, data, id) {
+		this.data = data;
+		this.key = (typeof id === "undefined") ? datastore.key(kind) : datastore.key([kind, id]);
 	}
 	getJSON() {
 		return {
-			"key": datastore.key([this.name, this.kind]),
+			"key": this.key,
 			"data": this.data
 		}
 	}
@@ -53,40 +57,71 @@ class Customer {
 }
 
 // Route Functions
-function httpGet(res, id) {
+function httpGet(res, id, kind, multiple) {
+	console.log(`get: ${id}`);
 	if (typeof datastore !== "undefined") {
-		datastore.get(id)
+		let objKey = datastore.key([kind, id]);
+		datastore.get(objKey)
 			.then((entity) => {
-				res.status(200).send(entity);
+				res.status(200).send(entity[0]);
+			})
+			.catch((e) => {
+				console.dir(e);
+				res.status(500).send("Unexpexted Error: 1001: Unable to connect to database");
 			});
 	}
-	else {
+	else
 		res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
-	}
 }
 
 function httpPost(res, entity) {
-	if (typeof datastore !== "undefined") {
-		datastore.insert(entity)
-			.then(() => {
-				res.status(200).send(`${name} added to datastore!`);
+	console.log("post");
+	if (typeof datastore !== "undefined")
+		datastore.insert(entity.getJSON())
+			.then((ret) => {
+				res.status(200).send(`${entity.key.id} added to datastore!`);
+			})
+			.catch((e) => {
+				console.dir(e);
+				res.status(500).send("Unexpexted Error: 1001: Unable to connect to database");
 			});
-	}
-	else {
+	else
 		res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
-	}
 }
 
-function httpDelete(res, id) {
+function httpDelete(res, id, kind) {
+	console.log("delete");
 	if (typeof datastore !== "undefined") {
-		datastore.delete(id)
+		let objKey = datastore.key([kind, id]);
+		datastore.delete(objKey)
 			.then(() => {
-				res.status(200).send(`$(id) removed from datastore`);
+				res.status(200).send(`${id} removed from datastore`);
+			})
+			.catch((e) => {
+				console.dir(e);
+				res.status(500).send("Unexpexted Error: 1001: Unable to connect to database");
 			});
 	}
-	else {
+	else
 		res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
-	}
+}
+
+function httpPatch(res, entity) {
+	console.log("patch");
+	if (typeof datastore !== "undefined")
+		datastore.update(entity)
+			.then(() => {
+				res.status(200).send(`${entity.data.id} updated`);
+			})
+			.catch((e) => {
+				console.dir(e);
+				if (e.code == 404)
+					res.status(404).send("404 Not found, no entity matches id");
+				else
+					res.status(500).send("Unexpexted Error: 1001: Unable to connect to database");
+			});
+	else
+		res.status(500).send("Unexpected Error: 1001: Unable to connect to databse");
 }
 
 // Home
@@ -95,59 +130,79 @@ app.get('/', (req, res) => {
 });
 
 // Customer stuff
+app.get('customer/:customerId/books', (req, res) => {
+	// let custId = Number(req.params.customerId);
+	// let objKey = datastore.key([kind, id]);
+	// 	datastore.get(objKey)
+	// 		.then((entity) => {
+				res.status(200)//.send(entity[0]);
+			// })
+			// .catch((e) => {
+			// 	console.dir(e);
+			// 	res.status(500).send("Unexpexted Error: 1001: Unable to connect to database");
+			// });
+});
 app.route('/customers/:customerId')
 	.get((req, res) => {
-		let custId = req.params.customerId;
-		httpGet(res, custId);
+		let custId = Number(req.params.customerId);
+		httpGet(res, custId, "Customer");
 	})
 	.delete((req, res) => {
-		let custId = req.params.customerId;
-		httpDelete(res, custId);
+		let custId = Number(req.params.customerId);
+		httpDelete(res, custId, "Customer");
 	})
 	.patch((req, res) => {
-		res.status(200).send("patch customer");
+		let [custData, custId] = [req.body.customer, Number(req.params.customerId)];
+		httpPatch(res, new Entity("Customer", custData, custId));
 	});
 app.post('/customers', (req, res) => {
-	let [name, balance, checked_out] = [req.body.name, req.body.balance, req.body.checked_out];
-	httpPost(res, new Entity("customer", name, new Customer(name, balance, checked_out).getJSON()));
+	let [name, balance, checked_out] = [req.body.name, Number(req.body.balance), req.body.checked_out];
+	httpPost(res, new Entity("Customer", new Customer(name, balance, checked_out).getJSON()));
 });
 
 // Books stuff
 app.route('/books/:bookId')
 	.get((req, res) => {
-		let bookId = req.params.bookId;
-		httpGet(res, bookId)
+		let bookId = Number(req.params.bookId);
+		httpGet(res, bookId, "Book");
 	})
 	.delete((req, res) => {
-		let bookId = req.params.bookId;
-		httpDelete(res, bookId);
+		let bookId = Number(req.params.bookId);
+		httpDelete(res, bookId, "Book");
 	})
 	.patch((req, res) => {
-		res.status(200).send("patch book");
+		let [bookData, bookId] = [req.body.book, Number(req.params.bookId)];
+		httpPatch(res, new Entity("Book", bookData, bookId));
 	});
 app.post('/books', (req, res) => {
 	let [title, isbn, genre, author, checkedIn] = [req.body.title, req.body.isbn, req.body.genre, req.body.author, req.body.checkedIn];
-	httpPost(res, new Entity("book", title, new Book(title, isbn, genre, author, checkedIn).getJSON()));
+	httpPost(res, new Entity("Book", new Book(title, isbn, genre, author, checkedIn).getJSON()));
 });
 
 // Check Books in and out
 app.route('/customers/:customerId/books/:bookId')
 	.put((req, res) => {
-		let [custId, bookId] = [req.params.customerId, req.params.bookId];
+		console.log("check out");
+		let [custId, bookId] = [Number(req.params.customerId), Number(req.params.bookId)];
 		if (typeof datastore !== "undefined") {
-			datastore.get(bookId)
+			datastore.get(datastore.key(["Book", bookId]))
 				.then ((books) => {
 					if (books[0].checkedIn) {
-						datastore.get(custId)
+						books[0].checkedIn = false;
+						datastore.get(datastore.key(["Customer", custId]))
 							.then((customers) => {
 								customers[0].checked_out[customers[0].checked_out.length] = bookId;
-								datastore.update({key: custId, checked_out: customers[0].checked_out})
+								datastore.update(customers[0])
 									.then(() => {
-										// Do something?
+										datastore.update(new Entity("Book", books[0], bookId))
+											.then(() => {
+												res.status(200).send(`${books[0].title} checked out to ${customers[0].name}`);
+											});
 									});
 							});
-						datastore.update({key: bookId, checkedIn: false});
-					}
+					} 
+					else 
+						res.status(500).send(`${bookId} not available for checkout`);
 				});
 		}
 		else {
@@ -155,26 +210,31 @@ app.route('/customers/:customerId/books/:bookId')
 		}
 	})
 	.delete((req, res) => {
-		let [custId, bookId] = [req.params.customerId, req.params.bookId];
+		console.log("check in");
+		let [custId, bookId] = [Number(req.params.customerId), Number(req.params.bookId)];
 		if (typeof datastore !== "undefined") {
-			datastore.get(bookId)
+			datastore.get(datastore.key(["Book", bookId]))
 				.then ((books) => {
 					if (!books[0].checkedIn) {
-						datastore.get(custId)
+						books[0].checkedIn = true;
+						datastore.get(datastore.key(["Customer", custId]))
 							.then((customers) => {
 								for (let i = 0; i < customers[0].checked_out.length; i++) 
 									if (customers[0].checked_out[i] == bookId) {
 										customers[0].checked_out.splice(i, 1);
 										break;
 									}
-
-								datastore.update({key: custId, checked_out: customers[0].checked_out})
+								datastore.update(customers[0])
 									.then(() => {
-										// Do something?
+										datastore.update(new Entity("Book", books[0], bookId))
+											.then(() => {
+												res.status(200).send(`${customers[0].name} checked in ${books[0].title}`);
+											});
 									});
 							});
-						datastore.update({key: bookId, checkedIn: true});
 					}
+					else 
+						res.status(500).send(`${bookId} not available for checkin`);
 				});
 		}
 		else {
