@@ -1,3 +1,6 @@
 /node_modules
-yarn.lock
+yarn*
 /images
+/.vscode
+cs496-1caf1fa42d50.json
+secrets.json
