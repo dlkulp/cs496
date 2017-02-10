@@ -193,7 +193,7 @@ function parseJwt (token) {
 app.get('/', (req, res) => {
 	if (typeof req.signedCookies["access"] !== "undefined") {
 		let data = JSON.parse(req.signedCookies["access"]);
-		res.status(200).send(`name: ${data.user.id_token.name}<br />profile: <a href="${data.user.id_token.profile}">${data.user.id_token.profile}</a><br />state: ${data.state}`);
+		res.status(200).send(`name: ${data.user.id_token.given_name} ${data.user.id_token.family_name}<br />profile: <a href="https://plus.google.com/u/0/${data.user.id_token.sub}">${data.user.id_token.name}</a><br />state: ${data.state}`);
 	}
 	else
 		res.status(200).send(new Date());
