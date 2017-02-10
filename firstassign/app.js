@@ -16,7 +16,7 @@ const loadJsonFile = require('load-json-file');
 const secrets = loadJsonFile.sync("secrets.json");
 const redirect = {"host-prod": "https://cs496-157709.appspot.com","host-dev": "http://localhost:8080", "route": "/oauth2callback"};
 const getAuthCode = "https://accounts.google.com/o/oauth2/v2/auth?" + 
-	"scope=email&" + 
+	"scope=email%20profile&" + 
 	"state=&" + 
 	`redirect_uri=${encodeURIComponent(redirect["host-prod"] + redirect.route)}&` + 
 	"response_type=code&" + 
@@ -203,7 +203,7 @@ app.get('/', (req, res) => {
 app.get('/login', (req, res) => {
 	if (typeof req.signedCookies["access"] === "undefined") {
 		let state = randString(48);
-		let authCode = getAuthCode.slice(0, 63) + state + getAuthCode.slice(63);
+		let authCode = getAuthCode.slice(0, 73) + state + getAuthCode.slice(73);
 		res.cookie("access", JSON.stringify({"state": state}), {signed:true, maxAge: 1000 * 60 * 60});
 		res.redirect(authCode);
 	}
