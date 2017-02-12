@@ -18,7 +18,7 @@ const redirect = {"host-prod": "https://cs496-157709.appspot.com","host-dev": "h
 const getAuthCode = "https://accounts.google.com/o/oauth2/v2/auth?" + 
 	"scope=email%20profile&" + 
 	"state=&" + 
-	`redirect_uri=${encodeURIComponent(redirect["host-dev"] + redirect.route)}&` + 
+	`redirect_uri=${encodeURIComponent(redirect["host-prod"] + redirect.route)}&` + 
 	"response_type=code&" + 
 	`client_id=${secrets.clientIdURL}`;
 const getIDToken = "https://www.googleapis.com/oauth2/v4/token";
@@ -224,7 +224,7 @@ app.get("/oauth2callback", (req, res) => {
 					code, 
 					client_id: secrets.clientIdURL, 
 					client_secret: secrets.client, 
-					redirect_uri: redirect["host-dev"] + redirect.route, 
+					redirect_uri: redirect["host-prod"] + redirect.route, 
 					grant_type:"authorization_code"
 				}
 			},
