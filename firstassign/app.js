@@ -18,7 +18,7 @@ const redirect = {"host-prod": "https://cs496-157709.appspot.com","host-dev": "h
 const getAuthCode = "https://accounts.google.com/o/oauth2/v2/auth?" + 
 	"scope=email%20profile&" + 
 	"state=&" + 
-	`redirect_uri=${encodeURIComponent(redirect["host-prod"] + redirect.route)}&` + 
+	`redirect_uri=${encodeURIComponent(redirect["host-dev"] + redirect.route)}&` + 
 	"response_type=code&" + 
 	`client_id=${secrets.clientIdURL}`;
 const getIDToken = "https://www.googleapis.com/oauth2/v4/token";
@@ -178,7 +178,7 @@ function randString(len) {
 	let str = "";
 	for (let i = 0; i < len; i++) {
 		let temp = Math.round(Math.random() * 36).toString(36);
-		str += (isNaN(temp)) ? (Math.round(Math.random()) ? temp.toUpperCase() : temp) : temp;
+		str += (isNaN(temp) && Math.round(Math.random())) ? temp.toUpperCase() : temp;
 	}
 	return str;
 }
@@ -193,10 +193,10 @@ function parseJwt (token) {
 app.get('/', (req, res) => {
 	if (typeof req.signedCookies["access"] !== "undefined") {
 		let data = JSON.parse(req.signedCookies["access"]);
-		res.status(200).send(`name: ${data.user.id_token.given_name} ${data.user.id_token.family_name}<br />profile: <a href="https://plus.google.com/u/0/${data.user.id_token.sub}">${data.user.id_token.name}</a><br />state: ${data.state}`);
+		res.status(200).send(`name: ${data.user.id_token.given_name} ${data.user.id_token.family_name}<br />profile: <a href="https://plus.google.com/u/0/${data.user.id_token.sub}">${data.user.id_token.name}</a><br />state: ${data.state}<br /><br /><a href="/signout">sign out</a>`);
 	}
 	else
-		res.status(200).send(new Date());
+		res.status(200).send(`${new Date()}<br /><br /><a href="/login">log in</a>`);
 });
 
 // Sign in
@@ -224,7 +224,7 @@ app.get("/oauth2callback", (req, res) => {
 					code, 
 					client_id: secrets.clientIdURL, 
 					client_secret: secrets.client, 
-					redirect_uri: redirect["host-prod"] + redirect.route, 
+					redirect_uri: redirect["host-dev"] + redirect.route, 
 					grant_type:"authorization_code"
 				}
 			},
