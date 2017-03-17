@@ -6,12 +6,10 @@ const cookieParser = require('cookie-parser');
 const request = require('request');
 const app = express();
 app.enable('trust proxy');
-// Add this: "@google-cloud/datastore": "^0.7.0" to package.json if data store is needed for some reason
-//const Datastore = require('@google-cloud/datastore');
-//const datastore = Datastore({
-//	projectId: "cs496-157709"//,
-	//keyFilename: "cs496-1caf1fa42d50.json"
-//});
+const Datastore = require('@google-cloud/datastore');
+const datastore = Datastore({
+	projectId: "cs496-157709"
+});
 const loadJsonFile = require('load-json-file');
 const secrets = loadJsonFile.sync("secrets.json");
 const redirect = {"host-prod": "https://cs496-157709.appspot.com","host-dev": "http://localhost:8080", "route": "/oauth2callback"};
@@ -42,30 +40,35 @@ class Entity {
 	}
 }
 
-class Book {
-	constructor(title, isbn, genre, author, checkedIn) {
-		[this.title, this.isbn, this.genre, this.author, this.checkedIn] = [title, isbn, genre, author, checkedIn];
-	}
-	getJSON() {
-		return {
-			"title": this.title,
-			"isbn": this.isbn,
-			"genre": this.genre,
-			"author": this.author,
-			"checkedIn": this.checkedIn
-		};
-	}
-}
-
-class Customer {
-	constructor(name, balance, checked_out) {
-		[this.name, this.balance, this.checked_out] = [name, balance, checked_out];
+class Task {
+	constructor(name, description, user, dateCreated, color, isActive, completed, taskList, weight) {
+		[this.name, this.description, this.user, this.dateCreated, this.color, this.isActive, this.completed, this.taskList, this.weight] = [name, description, user, dateCreated, color, isActive, completed, taskList, weight];
 	}
 	getJSON() {
 		return {
 			"name": this.name,
-			"balance": this.balance,
-			"checked_out": this.checked_out
+			"description": this.description,
+			"user": this.user,
+			"dateCreated": this.dateCreated,
+			"color": this.color,
+			"isActive" : this.isActive,
+			"completed": this.completed,
+			"taskList": this.taskList,
+			"weight": this.weight
+		};
+	}
+}
+
+class User {
+	constructor(email, taskList, displayName) {
+		[this.email, this.taskList, this.displayName, this.dateJoined] = [email, taskList, displayName, new Date()];
+	}
+	getJSON() {
+		return {
+			"email": this.email,
+			"taskList": this.taskList,
+			"displayName": this.displayName,
+			"dateJoined": this.dateJoined
 		}
 	}
 }
@@ -92,20 +95,44 @@ function httpGet(res, req, id, kind, multiple) {
 	}
 }
 
-function httpPost(res, req, entity) {
+function httpPost(res, req, entity, signin) {
 	if (typeof req.signedCookies["access"] === "undefined") 
 		res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
 	else {
 		console.log("post");
-		if (typeof datastore !== "undefined")
-			datastore.insert(entity.getJSON())
-				.then((ret) => {
-					res.status(200).send(`${entity.key.id} added to datastore!`);
-				})
-				.catch((e) => {
-					console.dir(e);
-					res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
-				});
+		if (typeof datastore !== "undefined") {
+			// See if user already exists
+			if (typeof signin !== "undefined") {
+				const query = datastore.createQuery("User").filter("Display Name", "=", entity.data.displayName);
+				datastore.runQuery(query)
+					.then((results) => {
+						let users = results[0];
+						if (users.length >= 1) { 
+							cookieData.user.entityId = users[0].key.id;
+							res.cookie("access", JSON.stringify(cookieData), {signed:true, maxAge: 1000 * 60 * 60});
+							res.status(200).send(JSON.stringify(results));
+						}
+					})
+					.catch((e) => {
+						res.status(500).send("Unexpected Error: 1001: Unable to connect to database<br />Looks like we ran into a problem making your account!<br />" + JSON.stringify(e));
+					});
+			}
+			else
+				datastore.insert(entity.getJSON())
+					.then((ret) => {
+						if (typeof signin === "undefined")
+							res.status(200).send(`${entity.key.id} added to datastore!`);
+						else {
+							let cookieData = JSON.parse(req.signedCookies.access);
+							cookieData.user.entityId = entity.key.id;
+							res.cookie("access", JSON.stringify(cookieData), {signed:true, maxAge: 1000 * 60 * 60});
+							res.status(200).send(JSON.stringify(coodieData));
+						}
+					})
+					.catch((e) => {
+						res.status(500).send("Unexpected Error: 1001: Unable to connect to database<br />Looks like we ran into a problem making your account!<br />" + JSON.stringify(e));
+					});
+		}
 		else
 			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
 	}
@@ -193,7 +220,7 @@ function parseJwt (token) {
 app.get('/', (req, res) => {
 	if (typeof req.signedCookies["access"] !== "undefined") {
 		let data = JSON.parse(req.signedCookies["access"]);
-		res.status(200).send(`name: ${data.user.id_token.given_name} ${data.user.id_token.family_name}<br />profile: <a href="https://plus.google.com/u/0/${data.user.id_token.sub}">${data.user.id_token.name}</a><br />state: ${data.state}<br /><br /><a href="/signout">sign out</a>`);
+		res.status(200).send(`Hello ${data.user.id_token.given_name} ${data.user.id_token.family_name}!<br /><br /><a href="/signout">sign out</a>`);
 	}
 	else
 		res.status(200).send(`${new Date()}<br /><br /><a href="/login">log in</a>`);
@@ -209,6 +236,7 @@ app.get('/login', (req, res) => {
 	}
 	else
 		res.redirect("/");
+		//https://accounts.google.com/AccountChooser?continue=https://accounts.google.com/o/oauth2/v2/auth?scope%3Demail%2Bprofile%26state%3Dk4pm4NCZt253JG7GVg8Lo4lzQgzL7R8u4kPRIHoPy9imwJpq%26redirect_uri%3Dhttps://cs496-157709.appspot.com/oauth2callback%26response_type%3Dcode%26client_id%3D546294694523-fj6r3hndd1730f38lr2d84tjjn6ft2h0.apps.googleusercontent.com%26from_login%3D1%26as%3D275857da4272acb7&btmpl=authsub&scc=1&oauth=1
 });
 
 app.get("/oauth2callback", (req, res) => {
@@ -235,8 +263,8 @@ app.get("/oauth2callback", (req, res) => {
 					userData.id_token = parseJwt(userData.id_token);
 					cookieData.user = userData;
 					res.cookie("access", JSON.stringify(cookieData), {signed:true, maxAge: 1000 * 60 * 60});
+					httpPost(res, req, new Entity("User", new User(userData.id_token.email, [], userData.id_token.name).getJSON()), "signin");
 				}
-				res.redirect("/");
     		}
 		);
 	}
@@ -250,161 +278,45 @@ app.get("/signout", (req, res) => {
 	res.redirect("/");
 });
 
-// Customer stuff
-app.route('/customers/:customerId')
+// Task stuff
+app.route('/task/:taskId')
 	.get((req, res) => {
-		let custId = Number(req.params.customerId);
-		httpGet(res, req, custId, "Customer");
+		let taskId = Number(req.params.taskId);
+		httpGet(res, req, taskId, "Task");
 	})
 	.delete((req, res) => {
-		let custId = Number(req.params.customerId);
-		httpDelete(res, req, custId, "Customer");
+		let taskId = Number(req.params.taskId);
+		httpDelete(res, req, taskId, "Task");
 	})
 	.patch((req, res) => {
-		let [custData, custId] = [req.body.customer, Number(req.params.customerId)];
-		httpPatch(res, req, new Entity("Customer", custData, custId));
+		let [taskData, taskId] = [req.body.task, Number(req.params.taskId)];
+		httpPatch(res, req, new Entity("Task", taskData, taskId));
 	});
-app.route('/customers')
+app.route('/tasks')
 	.post((req, res) => {
-		let [name, balance, checked_out] = [req.body.name, Number(req.body.balance), req.body.checked_out];
-		httpPost(res, req, new Entity("Customer", new Customer(name, balance, checked_out).getJSON()));
-	})
-	.put((req, res) => {
-		let [name, balance, checked_out] = [req.body.name, Number(req.body.balance), req.body.checked_out];
-		httpPut(res, req, new Entity("Customer", new Customer(name, balance, checked_out).getJSON()));
+		if (typeof req.signedCookies["access"] === "undefined")
+			res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
+		else {
+			let [name, description, user, dateCreated, color, isActive, completed, taskList, weight] = [req.body.name, req.body.description, JSON.parse(req.signedCookies.access).user.entityId, req.body.dateCreated, req.body.color, req.body.isActive, req.body.completed, req.body.taskList, req.body.weight];
+			httpPost(res, req, new Entity("Task", new Task(name, description, user, dateCreated, color, isActive, completed, taskList, weight).getJSON()));
+		}
 	});
-app.get('/customer/:customerId/books', (req, res) => {
-	if (typeof req.signedCookies["access"] === "undefined") 
-		res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
-	else {
-		console.log("get all customer's books");
-		let custId = Number(req.params.customerId);
-		let objKey = datastore.key(["Customer", custId]);
-		datastore.get(objKey)
-			.then((entity) => {
-				let keys = [];
-				for (let i = 0; i < entity[0].checked_out.length; i++)
-					keys[i] = datastore.key(["Book", Number(entity[0].checked_out[i].replace("/books/", ""))]);
-				httpGet(res, req, keys, "Book", true);
-			})
-			.catch((e) => {
-				console.dir(e);
-				res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
-			});
-	}
-});
 
-// Books stuff
-app.route('/books/:bookId')
+// User stuff -- note: new users are made when oauthing (must be associated with a google user)
+app.route('/user/:userId')
 	.get((req, res) => {
-		let bookId = Number(req.params.bookId);
-		httpGet(res, req, bookId, "Book");
+		let userId = Number(req.params.userId);
+		httpGet(res, req, userId, "User");
 	})
 	.delete((req, res) => {
-		let bookId = Number(req.params.bookId);
-		httpDelete(res, req, bookId, "Book");
+		let userId = Number(req.params.userId);
+		httpDelete(res, req, userId, "User");
 	})
 	.patch((req, res) => {
-		let [bookData, bookId] = [req.body.book, Number(req.params.bookId)];
-		httpPatch(res, req, new Entity("Book", bookData, bookId));
+		let [userData, userId] = [req.body.user, Number(req.params.userId)];
+		httpPatch(res, req, new Entity("User", userData, userId));
 	});
-app.route('/books')
-	.post((req, res) => {
-		let [title, isbn, genre, author, checkedIn] = [req.body.title, req.body.isbn, req.body.genre, req.body.author, req.body.checkedIn];
-		httpPost(res, req, new Entity("Book", new Book(title, isbn, genre, author, checkedIn).getJSON()));
-	})
-	.put((req, res) => {
-		let [title, isbn, genre, author, checkedIn] = [req.body.title, req.body.isbn, req.body.genre, req.body.author, req.body.checkedIn];
-		httpPut(res, req, new Entity("Book", new Book(title, isbn, genre, author, checkedIn).getJSON()));
-	});
-app.get('/books', (req, res) => {
-	if (typeof req.signedCookies["access"] === "undefined") 
-		res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
-	else {
-		console.log("get books by checkIn status");
-		let checkStat = (req.query.checkedIn.toUpperCase() === "TRUE");
-		const query = datastore.createQuery("Book").filter("checkedIn", "=", checkStat);
-		datastore.runQuery(query)
-			.then((entities) => {
-				res.status(200).send(entities[0]);
-			})
-			.catch((e) => {
-				console.dir(e);
-				res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
-			});
-	}
-});
 
-// Check Books in and out
-app.route('/customers/:customerId/books/:bookId')
-	.put((req, res) => {
-		if (typeof req.signedCookies["access"] === "undefined") 
-			res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
-		else {
-			console.log("check out");
-			let [custId, bookId] = [Number(req.params.customerId), Number(req.params.bookId)];
-			if (typeof datastore !== "undefined") {
-				datastore.get(datastore.key(["Book", bookId]))
-					.then ((books) => {
-						if (books[0].checkedIn) {
-							books[0].checkedIn = false;
-							datastore.get(datastore.key(["Customer", custId]))
-								.then((customers) => {
-									customers[0].checked_out[customers[0].checked_out.length] = `/books/${bookId}`;
-									datastore.update(customers[0])
-										.then(() => {
-											datastore.update(new Entity("Book", books[0], bookId))
-												.then(() => {
-													res.status(200).send(`${books[0].title} checked out to ${customers[0].name}`);
-												});
-										});
-								});
-						} 
-						else 
-							res.status(500).send(`${bookId} not available for checkout`);
-					});
-			}
-			else {
-				res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
-			}
-		}
-	})
-	.delete((req, res) => {
-		if (typeof req.signedCookies["access"] === "undefined") 
-			res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
-		else {
-			console.log("check in");
-			let [custId, bookId] = [Number(req.params.customerId), Number(req.params.bookId)];
-			if (typeof datastore !== "undefined") {
-				datastore.get(datastore.key(["Book", bookId]))
-					.then ((books) => {
-						if (!books[0].checkedIn) {
-							books[0].checkedIn = true;
-							datastore.get(datastore.key(["Customer", custId]))
-								.then((customers) => {
-									for (let i = 0; i < customers[0].checked_out.length; i++) 
-										if (customers[0].checked_out[i] == bookId) {
-											customers[0].checked_out.splice(i, 1);
-											break;
-										}
-									datastore.update(customers[0])
-										.then(() => {
-											datastore.update(new Entity("Book", books[0], bookId))
-												.then(() => {
-													res.status(200).send(`${customers[0].name} checked in ${books[0].title}`);
-												});
-										});
-								});
-						}
-						else 
-							res.status(500).send(`${bookId} not available for checkin`);
-					});
-			}
-			else {
-				res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
-			}
-		}
-	});
 
 // Start server and list on port
 if (module === require.main) {

@@ -29,6 +29,7 @@
     "body-parser": "^1.16.0",
     "cookie-parser": "^1.4.3",
     "request": "^2.79.0",
-    "load-json-file": "^2.0.0"
+    "load-json-file": "^2.0.0",
+    "@google-cloud/datastore": "^0.7.1"
   }
 }
