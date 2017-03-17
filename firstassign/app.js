@@ -103,20 +103,38 @@ function httpPost(res, req, entity, signin) {
 		if (typeof datastore !== "undefined") {
 			// See if user already exists
 			if (typeof signin !== "undefined") {
-				const query = datastore.createQuery("User").filter("Display Name", "=", entity.data.displayName);
+				const query = datastore.createQuery("User").filter("email", "=", entity.data.email);
 				datastore.runQuery(query)
 					.then((results) => {
 						let users = results[0];
+						// Send the existing user
 						if (users.length >= 1) { 
 							cookieData.user.entityId = users[0].key.id;
 							res.cookie("access", JSON.stringify(cookieData), {signed:true, maxAge: 1000 * 60 * 60});
 							res.status(200).send(JSON.stringify(results));
 						}
+						// Make a new one
+						else 
+							datastore.insert(entity.getJSON())
+								.then((ret) => {
+									if (typeof signin === "undefined")
+										res.status(200).send(`${entity.key.id} added to datastore!`);
+									else {
+										let cookieData = JSON.parse(req.signedCookies.access);
+										cookieData.user.entityId = entity.key.id;
+										res.cookie("access", JSON.stringify(cookieData), {signed:true, maxAge: 1000 * 60 * 60});
+										res.status(200).send(JSON.stringify(coodieData));
+									}
+								})
+								.catch((e) => {
+									res.status(500).send("Unexpected Error: 1001: Unable to connect to database<br />Looks like we ran into a problem making your account!<br />" + JSON.stringify(e));
+								});
 					})
 					.catch((e) => {
-						res.status(500).send("Unexpected Error: 1001: Unable to connect to database<br />Looks like we ran into a problem making your account!<br />" + JSON.stringify(e));
+						res.status(500).send("Unexpected Error: 1001: Unable to connect to database<br />Looks like we ran into a problem retrieving your account!<br />" + JSON.stringify(e));
 					});
 			}
+			// Make a new user
 			else
 				datastore.insert(entity.getJSON())
 					.then((ret) => {
@@ -220,7 +238,7 @@ function parseJwt (token) {
 app.get('/', (req, res) => {
 	if (typeof req.signedCookies["access"] !== "undefined") {
 		let data = JSON.parse(req.signedCookies["access"]);
-		res.status(200).send(`Hello ${data.user.id_token.given_name} ${data.user.id_token.family_name}!<br /><br /><a href="/signout">sign out</a>`);
+		res.status(200).send(`Hello ${data.user.id_token.given_name} ${data.user.id_token.family_name}!<br /><br /><a href="/signout">sign out</a><br /><br />${JSON.stringify(data)}`);
 	}
 	else
 		res.status(200).send(`${new Date()}<br /><br /><a href="/login">log in</a>`);
@@ -263,7 +281,7 @@ app.get("/oauth2callback", (req, res) => {
 					userData.id_token = parseJwt(userData.id_token);
 					cookieData.user = userData;
 					res.cookie("access", JSON.stringify(cookieData), {signed:true, maxAge: 1000 * 60 * 60});
-					httpPost(res, req, new Entity("User", new User(userData.id_token.email, [], userData.id_token.name).getJSON()), "signin");
+					httpPost(res, req, new Entity("User", new User(userData.id_token.email, [], userData.id_token.name)), "signin");
 				}
     		}
 		);
