@@ -41,14 +41,13 @@ class Entity {
 }
 
 class Task {
-	constructor(name, description, user, dateCreated, color, isActive, completed, taskList, weight) {
-		[this.name, this.description, this.user, this.dateCreated, this.color, this.isActive, this.completed, this.taskList, this.weight] = [name, description, user, dateCreated, color, isActive, completed, taskList, weight];
+	constructor(name, description, color, taskList, weight) {
+		[this.name, this.description, this.dateCreated, this.color, this.isActive, this.completed, this.taskList, this.weight] = [name, description, new Date(), color, true, false, `/tasklist/${taskList}`, weight];
 	}
 	getJSON() {
 		return {
 			"name": this.name,
 			"description": this.description,
-			"user": this.user,
 			"dateCreated": this.dateCreated,
 			"color": this.color,
 			"isActive" : this.isActive,
@@ -59,16 +58,18 @@ class Task {
 	}
 }
 
-class User {
-	constructor(email, taskList, displayName) {
-		[this.email, this.taskList, this.displayName, this.dateJoined] = [email, taskList, displayName, new Date()];
+class TaskList {
+	constructor(name, description, user, completeBy) {
+		[this.name, this.description, this.user, this.dateCreated, this.completed, this.completeBy] = [name, description, user, new Date(), false, completeBy];
 	}
 	getJSON() {
 		return {
-			"email": this.email,
-			"taskList": this.taskList,
-			"displayName": this.displayName,
-			"dateJoined": this.dateJoined
+			"name": this.name,
+			"description": this.description,
+			"user": this.user,
+			"dateCreated": this.dateCreated,
+			"completed": this.completed,
+			"completeBy": this.completeBy
 		}
 	}
 }
@@ -95,61 +96,19 @@ function httpGet(res, req, id, kind, multiple) {
 	}
 }
 
-function httpPost(res, req, entity, signin) {
+function httpPost(res, req, entity) {
 	if (typeof req.signedCookies["access"] === "undefined") 
 		res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
 	else {
 		console.log("post");
 		if (typeof datastore !== "undefined") {
-			// See if user already exists
-			if (typeof signin !== "undefined") {
-				const query = datastore.createQuery("User").filter("email", "=", entity.data.email);
-				datastore.runQuery(query)
-					.then((results) => {
-						let users = results[0];
-						// Send the existing user
-						if (users.length >= 1) { 
-							cookieData.user.entityId = users[0].key.id;
-							res.cookie("access", JSON.stringify(cookieData), {signed:true, maxAge: 1000 * 60 * 60});
-							res.status(200).send(JSON.stringify(results));
-						}
-						// Make a new one
-						else 
-							datastore.insert(entity.getJSON())
-								.then((ret) => {
-									if (typeof signin === "undefined")
-										res.status(200).send(`${entity.key.id} added to datastore!`);
-									else {
-										let cookieData = JSON.parse(req.signedCookies.access);
-										cookieData.user.entityId = entity.key.id;
-										res.cookie("access", JSON.stringify(cookieData), {signed:true, maxAge: 1000 * 60 * 60});
-										res.status(200).send(JSON.stringify(coodieData));
-									}
-								})
-								.catch((e) => {
-									res.status(500).send("Unexpected Error: 1001: Unable to connect to database<br />Looks like we ran into a problem making your account!<br />" + JSON.stringify(e));
-								});
-					})
-					.catch((e) => {
-						res.status(500).send("Unexpected Error: 1001: Unable to connect to database<br />Looks like we ran into a problem retrieving your account!<br />" + JSON.stringify(e));
-					});
-			}
-			// Make a new user
-			else
-				datastore.insert(entity.getJSON())
-					.then((ret) => {
-						if (typeof signin === "undefined")
-							res.status(200).send(`${entity.key.id} added to datastore!`);
-						else {
-							let cookieData = JSON.parse(req.signedCookies.access);
-							cookieData.user.entityId = entity.key.id;
-							res.cookie("access", JSON.stringify(cookieData), {signed:true, maxAge: 1000 * 60 * 60});
-							res.status(200).send(JSON.stringify(coodieData));
-						}
-					})
-					.catch((e) => {
-						res.status(500).send("Unexpected Error: 1001: Unable to connect to database<br />Looks like we ran into a problem making your account!<br />" + JSON.stringify(e));
-					});
+			datastore.insert(entity.getJSON())
+				.then((ret) => {
+					res.status(200).send(`${entity.key.id}`);
+				})
+				.catch((e) => {
+					res.status(500).send("Unexpected Error: 1001: Unable to connect to database<br />Looks like we ran into a problem making a new " + entity.type + "!<br />" + JSON.stringify(e));
+				});
 		}
 		else
 			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
@@ -164,7 +123,7 @@ function httpPut(res, req, entity) {
 		if (typeof datastore !== "undefined")
 			datastore.upsert(entity.getJSON())
 				.then((ret) => {
-					res.status(200).send(`${entity.key.id} added to datastore!`);
+					res.status(200).send(`${entity.key.id}`);
 				})
 				.catch((e) => {
 					console.dir(e);
@@ -175,16 +134,16 @@ function httpPut(res, req, entity) {
 	}
 }
 
-function httpDelete(res, req, id, kind) {
+function httpDelete(res, req, id, kind, multiple) {
 	if (typeof req.signedCookies["access"] === "undefined") 
 		res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
 	else {
 		console.log("delete");
 		if (typeof datastore !== "undefined") {
-			let objKey = datastore.key([kind, id]);
+			let objKey = (!!multiple) ? id : datastore.key([kind, id]);
 			datastore.delete(objKey)
 				.then(() => {
-					res.status(200).send(`${id} removed from datastore`);
+					res.status(200).send("success");
 				})
 				.catch((e) => {
 					console.dir(e);
@@ -203,8 +162,8 @@ function httpPatch(res, req, entity) {
 		console.log("patch");
 		if (typeof datastore !== "undefined")
 			datastore.update(entity)
-				.then(() => {
-					res.status(200).send(`${entity.data.id} updated`);
+				.then((ret) => {
+					res.status(200).send("success");
 				})
 				.catch((e) => {
 					console.dir(e);
@@ -238,7 +197,7 @@ function parseJwt (token) {
 app.get('/', (req, res) => {
 	if (typeof req.signedCookies["access"] !== "undefined") {
 		let data = JSON.parse(req.signedCookies["access"]);
-		res.status(200).send(`Hello ${data.user.id_token.given_name} ${data.user.id_token.family_name}!<br /><br /><a href="/signout">sign out</a><br /><br />${JSON.stringify(data)}`);
+		res.status(200).send(`<!doctype html><body>Hello ${data.user.id_token.given_name} ${data.user.id_token.family_name}!<br /><br /><a href="/signout">sign out</a></body></html>`);
 	}
 	else
 		res.status(200).send(`${new Date()}<br /><br /><a href="/login">log in</a>`);
@@ -254,7 +213,6 @@ app.get('/login', (req, res) => {
 	}
 	else
 		res.redirect("/");
-		//https://accounts.google.com/AccountChooser?continue=https://accounts.google.com/o/oauth2/v2/auth?scope%3Demail%2Bprofile%26state%3Dk4pm4NCZt253JG7GVg8Lo4lzQgzL7R8u4kPRIHoPy9imwJpq%26redirect_uri%3Dhttps://cs496-157709.appspot.com/oauth2callback%26response_type%3Dcode%26client_id%3D546294694523-fj6r3hndd1730f38lr2d84tjjn6ft2h0.apps.googleusercontent.com%26from_login%3D1%26as%3D275857da4272acb7&btmpl=authsub&scc=1&oauth=1
 });
 
 app.get("/oauth2callback", (req, res) => {
@@ -281,9 +239,9 @@ app.get("/oauth2callback", (req, res) => {
 					userData.id_token = parseJwt(userData.id_token);
 					cookieData.user = userData;
 					res.cookie("access", JSON.stringify(cookieData), {signed:true, maxAge: 1000 * 60 * 60});
-					httpPost(res, req, new Entity("User", new User(userData.id_token.email, [], userData.id_token.name)), "signin");
+					res.redirect("/");
 				}
-    		}
+			}
 		);
 	}
 	else
@@ -308,33 +266,55 @@ app.route('/task/:taskId')
 	})
 	.patch((req, res) => {
 		let [taskData, taskId] = [req.body.task, Number(req.params.taskId)];
-		httpPatch(res, req, new Entity("Task", taskData, taskId));
+		httpPatch(res, req, new Entity("Task", new Task(taskData.name, taskData.description, taskData.color, taskData.taskList, taskData.weight).getJSON(), taskId));
 	});
 app.route('/tasks')
 	.post((req, res) => {
 		if (typeof req.signedCookies["access"] === "undefined")
 			res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
 		else {
-			let [name, description, user, dateCreated, color, isActive, completed, taskList, weight] = [req.body.name, req.body.description, JSON.parse(req.signedCookies.access).user.entityId, req.body.dateCreated, req.body.color, req.body.isActive, req.body.completed, req.body.taskList, req.body.weight];
-			httpPost(res, req, new Entity("Task", new Task(name, description, user, dateCreated, color, isActive, completed, taskList, weight).getJSON()));
+			let [name, description, color, taskList, weight] = [req.body.name, req.body.description, req.body.color, `${req.body.taskList}`, req.body.weight];
+			httpPost(res, req, new Entity("Task", new Task(name, description, color, taskList, weight).getJSON()));
 		}
 	});
 
 // User stuff -- note: new users are made when oauthing (must be associated with a google user)
-app.route('/user/:userId')
+app.route('/tasklist/:tasklistId')
 	.get((req, res) => {
-		let userId = Number(req.params.userId);
-		httpGet(res, req, userId, "User");
+		let tasklistId = Number(req.params.tasklistId);
+		httpGet(res, req, tasklistId, "TaskList");
 	})
 	.delete((req, res) => {
-		let userId = Number(req.params.userId);
-		httpDelete(res, req, userId, "User");
+		let tasklistId = Number(req.params.tasklistId);
+		// Get all tasks in tasklist and remove them all
+		const query = datastore.createQuery("Task").filter("taskList", "=", tasklistId);
+		datastore.runQuery(query)
+			.then((entities) => {
+				let keys = [];
+				console.log(JSON.stringify(entities));
+				for (entity of entities[0])
+					keys.push(entity.key);
+				keys.push(datastore.key(["TaskList", tasklistId]));
+				httpDelete(res, req, keys, "TaskList", true);
+			})
+			.catch((e) => {
+				console.dir(e);
+				res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+			});
 	})
 	.patch((req, res) => {
-		let [userData, userId] = [req.body.user, Number(req.params.userId)];
-		httpPatch(res, req, new Entity("User", userData, userId));
+		let [taskListData, tasklistId] = [req.body.taskList, Number(req.params.tasklistId)];
+		httpPatch(res, req, new Entity("TaskList", new TaskList(taskListData.name, taskListData.description, taskListData.user, taskListData.completeBy).getJSON(), tasklistId));
 	});
-
+app.route('/tasklists')
+	.post((req, res) => {
+		if (typeof req.signedCookies["access"] === "undefined")
+			res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
+		else {
+			let [name, description, user, completeBy] = [req.body.name, req.body.description, JSON.parse(req.signedCookies.access).user.id_token.email, req.body.completeBy];
+			httpPost(res, req, new Entity("TaskList", new TaskList(name, description, user, completeBy).getJSON()));
+		}
+	});
 
 // Start server and list on port
 if (module === require.main) {
