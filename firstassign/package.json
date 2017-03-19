@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo 'test'",
     "start": "node app.js",
-    "deploy": "gcloud app deploy app.yaml"
+    "deploy": "gcloud app deploy app.yaml --version=1"
   },
   "repository": {
     "type": "git",

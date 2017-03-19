@@ -12,7 +12,7 @@ const datastore = Datastore({
 });
 const loadJsonFile = require('load-json-file');
 const secrets = loadJsonFile.sync("secrets.json");
-const redirect = {"host-prod": "https://cs496-157709.appspot.com","host-dev": "http://localhost:8080", "route": "/oauth2callback"};
+const redirect = {"host-dev": "https://cs496-157709.appspot.com","host-prod": "http://localhost:8080", "route": "/oauth2callback"};
 const getAuthCode = "https://accounts.google.com/o/oauth2/v2/auth?" + 
 	"scope=email%20profile&" + 
 	"state=&" + 
@@ -32,29 +32,11 @@ class Entity {
 		this.data = data;
 		this.key = (typeof id === "undefined") ? datastore.key(kind) : datastore.key([kind, id]);
 	}
-	getJSON() {
-		return {
-			"key": this.key,
-			"data": this.data
-		}
-	}
 }
 
 class Task {
 	constructor(name, description, color, taskList, weight) {
 		[this.name, this.description, this.dateCreated, this.color, this.isActive, this.completed, this.taskList, this.weight] = [name, description, new Date(), color, true, false, `/tasklist/${taskList}`, weight];
-	}
-	getJSON() {
-		return {
-			"name": this.name,
-			"description": this.description,
-			"dateCreated": this.dateCreated,
-			"color": this.color,
-			"isActive" : this.isActive,
-			"completed": this.completed,
-			"taskList": this.taskList,
-			"weight": this.weight
-		};
 	}
 }
 
@@ -62,26 +44,16 @@ class TaskList {
 	constructor(name, description, user, completeBy) {
 		[this.name, this.description, this.user, this.dateCreated, this.completed, this.completeBy] = [name, description, user, new Date(), false, completeBy];
 	}
-	getJSON() {
-		return {
-			"name": this.name,
-			"description": this.description,
-			"user": this.user,
-			"dateCreated": this.dateCreated,
-			"completed": this.completed,
-			"completeBy": this.completeBy
-		}
-	}
 }
 
 // Route Functions
-function httpGet(res, req, id, kind, multiple) {
+function httpGet(res, req, id, kind) {
 	if (typeof req.signedCookies["access"] === "undefined") 
 		res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
 	else {
 		console.log("get");
 		if (typeof datastore !== "undefined") {
-			let objKey = (!!multiple) ? id : datastore.key([kind, id]);
+			let objKey = datastore.key([kind, id]);
 			datastore.get(objKey)
 				.then((entities) => {
 					res.status(200).send((!!multiple) ? entities : entities[0]);
@@ -102,12 +74,12 @@ function httpPost(res, req, entity) {
 	else {
 		console.log("post");
 		if (typeof datastore !== "undefined") {
-			datastore.insert(entity.getJSON())
+			datastore.insert(entity)
 				.then((ret) => {
 					res.status(200).send(`${entity.key.id}`);
 				})
 				.catch((e) => {
-					res.status(500).send("Unexpected Error: 1001: Unable to connect to database<br />Looks like we ran into a problem making a new " + entity.type + "!<br />" + JSON.stringify(e));
+					res.status(500).send("Unexpected Error: 1001: Unable to connect to database<br />Looks like we ran into a problem making a new " + entity.type + "!");
 				});
 		}
 		else
@@ -115,33 +87,13 @@ function httpPost(res, req, entity) {
 	}
 }
 
-function httpPut(res, req, entity) {
+function httpDelete(res, req, id, kind, multiple) {
 	if (typeof req.signedCookies["access"] === "undefined") 
 		res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
 	else {
-		console.log("put");
-		if (typeof datastore !== "undefined")
-			datastore.upsert(entity.getJSON())
-				.then((ret) => {
-					res.status(200).send(`${entity.key.id}`);
-				})
-				.catch((e) => {
-					console.dir(e);
-					res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
-				});
-		else
-			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
-	}
-}
-
-function httpDelete(res, req, id, kind, multiple) {
-	// if (typeof req.signedCookies["access"] === "undefined") 
-	// 	res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
-	// else {
 		console.log("delete");
 		if (typeof datastore !== "undefined") {
 			let objKey = (!!multiple) ? id : datastore.key([kind, id]);
-			console.log(JSON.stringify(objKey));
 			datastore.delete(objKey)
 				.then(() => {
 					res.status(200).send("success");
@@ -153,7 +105,7 @@ function httpDelete(res, req, id, kind, multiple) {
 		}
 		else
 			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
-	//}
+	}
 }
 
 function httpPatch(res, req, entity) {
@@ -267,7 +219,7 @@ app.route('/task/:taskId')
 	})
 	.patch((req, res) => {
 		let [taskData, taskId] = [req.body.task, Number(req.params.taskId)];
-		httpPatch(res, req, new Entity("Task", new Task(taskData.name, taskData.description, taskData.color, taskData.taskList, taskData.weight).getJSON(), taskId));
+		httpPatch(res, req, new Entity("Task", new Task(taskData.name, taskData.description, taskData.color, taskData.taskList, taskData.weight), taskId));
 	});
 app.route('/tasks')
 	.post((req, res) => {
@@ -275,7 +227,7 @@ app.route('/tasks')
 			res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
 		else {
 			let [name, description, color, taskList, weight] = [req.body.name, req.body.description, req.body.color, `${req.body.taskList}`, req.body.weight];
-			httpPost(res, req, new Entity("Task", new Task(name, description, color, taskList, weight).getJSON()));
+			httpPost(res, req, new Entity("Task", new Task(name, description, color, taskList, weight)));
 		}
 	});
 
@@ -292,22 +244,20 @@ app.route('/tasklist/:tasklistId')
 		console.log(JSON.stringify(query));
 		datastore.runQuery(query)
 			.then((entities) => {
-				let keys = [];
-				console.log(JSON.stringify(entities));
-				for (entity of entities[0])
-					keys.push(entity.key);
+				var keys = [];
+				for (let entity of entities[0])
+					keys.push(entity[datastore.KEY]);
 				keys.push(datastore.key(["TaskList", tasklistId]));
-				console.log(keys.length);
 				httpDelete(res, req, keys, "TaskList", true);
 			})
 			.catch((e) => {
 				console.dir(e);
-				res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+				res.status(500).send("Unexpected Error: 1001: Unable to connect to database<br />" + JSON.stringify(e));
 			});
 	})
 	.patch((req, res) => {
 		let [taskListData, tasklistId] = [req.body.taskList, Number(req.params.tasklistId)];
-		httpPatch(res, req, new Entity("TaskList", new TaskList(taskListData.name, taskListData.description, taskListData.user, taskListData.completeBy).getJSON(), tasklistId));
+		httpPatch(res, req, new Entity("TaskList", new TaskList(taskListData.name, taskListData.description, taskListData.user, taskListData.completeBy), tasklistId));
 	});
 app.route('/tasklists')
 	.post((req, res) => {
@@ -315,7 +265,7 @@ app.route('/tasklists')
 			res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
 		else {
 			let [name, description, user, completeBy] = [req.body.name, req.body.description, JSON.parse(req.signedCookies.access).user.id_token.email, req.body.completeBy];
-			httpPost(res, req, new Entity("TaskList", new TaskList(name, description, user, completeBy).getJSON()));
+			httpPost(res, req, new Entity("TaskList", new TaskList(name, description, user, completeBy)));
 		}
 	});
 

@@ -1,0 +1,571 @@
+{
+	"variables": [],
+	"info": {
+		"name": "cs496 - final",
+		"_postman_id": "41121bcf-e655-ea75-a984-80a58c2c0a49",
+		"description": "",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Add Task List",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status 200\"] = responseCode.code === 200;",
+							"tests[\"Id Length\"] = responseBody.length === 16;",
+							"tests[\"Id is number\"] = !isNaN(responseBody);",
+							"",
+							"postman.setEnvironmentVariable(\"tasklist\", responseBody.substring(0, 16));"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{domain}}/tasklists",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "{{auth}}",
+						"description": ""
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Make Shoes\", \n  \"description\": \"Craft an awesome pair of leather slippers\", \n  \"user\": \"damiankulp@gmail.com\",\n  \"completeBy\": \"3/26/2017\" \n}"
+				},
+				"description": "Make a new task list"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Task List",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status 200\"] = responseCode.code === 200;",
+							"",
+							"try {",
+							"    var data = JSON.parse(responseBody);",
+							"    tests[\"Name is correct\"] = data.name === \"Make Shoes\";",
+							"    tests[\"Description is correct\"] = data.description === \"Craft an awesome pair of leather slippers\";",
+							"}",
+							"catch(e) {",
+							"    tests[\"Name is correct\"] = false;",
+							"    tests[\"Description is correct\"] = false;",
+							"}"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{domain}}/tasklist/{{tasklist}}",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "{{auth}}",
+						"description": ""
+					}
+				],
+				"body": {},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Update Task List Complete Date",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status 200\"] = responseCode.code === 200;",
+							"tests[\"Successfully Updated\"] = responseBody === \"success\";"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{domain}}/tasklist/{{tasklist}}",
+				"method": "PATCH",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					},
+					{
+						"key": "Cookie",
+						"value": "{{auth}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"taskList\": {\n\t  \"name\": \"Make Shoes\", \n\t  \"description\": \"Craft an awesome pair of leather slippers\", \n\t  \"user\": \"damiankulp@gmail.com\",\n\t  \"completeBy\": \"04/02/2017\"\n\t}\n}"
+				},
+				"description": "Add a week to the complete date"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Task List After Update",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status 200\"] = responseCode.code === 200;",
+							"",
+							"try {",
+							"    var data = JSON.parse(responseBody);",
+							"    tests[\"Name is correct\"] = data.name === \"Make Shoes\";",
+							"    tests[\"Description is correct\"] = data.description === \"Craft an awesome pair of leather slippers\";",
+							"    tests[\"Date is correct\"] = data.completeBy === \"04/02/2017\";",
+							"}",
+							"catch(e) {",
+							"    tests[\"Name is correct\"] = false;",
+							"    tests[\"Description is correct\"] = false;",
+							"    tests[\"Date is correct\"] = false;",
+							"}"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{domain}}/tasklist/{{tasklist}}",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "{{auth}}",
+						"description": ""
+					}
+				],
+				"body": {},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "New Task",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status 200\"] = responseCode.code === 200;",
+							"tests[\"Id Length\"] = responseBody.length === 16;",
+							"tests[\"Id is number\"] = !isNaN(responseBody);",
+							"",
+							"postman.setEnvironmentVariable(\"task1\", responseBody.substring(0, 16));"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{domain}}/tasks",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					},
+					{
+						"key": "Cookie",
+						"value": "{{auth}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Purchase nice leather and leather working tools\", \n  \"description\": \"Get some nice leather to make my slippers out of and the tools to effectively work with it\",\n  \"color\": \"#FF3366\",\n  \"taskList\": {{tasklist}}, \n  \"weight\": 1\n}"
+				},
+				"description": "Create a new task"
+			},
+			"response": []
+		},
+		{
+			"name": "New Task 2",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status 200\"] = responseCode.code === 200;",
+							"tests[\"Id Length\"] = responseBody.length === 16;",
+							"tests[\"Id is number\"] = !isNaN(responseBody);",
+							"",
+							"postman.setEnvironmentVariable(\"task2\", responseBody.substring(0, 16));"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{domain}}/tasks",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					},
+					{
+						"key": "Cookie",
+						"value": "{{auth}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Learn how to make slippers\", \n  \"description\": \"Take classes or watch YouTube videos or something like that, I don't know how to cobble!\",\n  \"color\": \"#33A81C\",\n  \"taskList\": {{tasklist}}, \n  \"weight\": 2\n}"
+				},
+				"description": "Create a new task"
+			},
+			"response": []
+		},
+		{
+			"name": "New Task 3",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status 200\"] = responseCode.code === 200;",
+							"tests[\"Id Length\"] = responseBody.length === 16;",
+							"tests[\"Id is number\"] = !isNaN(responseBody);",
+							"",
+							"postman.setEnvironmentVariable(\"task3\", responseBody.substring(0, 16));"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{domain}}/tasks",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					},
+					{
+						"key": "Cookie",
+						"value": "{{auth}}",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Watch the Oxford vs Cambridge cricket game\", \n  \"description\": \"Love me some cricket.  Can't miss this rip roarin' game!\",\n  \"color\": \"#64AADF\",\n  \"taskList\": \"\", \n  \"weight\": 1\n}"
+				},
+				"description": "Create a new task"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Task 1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status 200\"] = responseCode.code === 200;",
+							"",
+							"try {",
+							"    var data = JSON.parse(responseBody);",
+							"    tests[\"Name is correct\"] = data.name === \"Purchase nice leather and leather working tools\";",
+							"    tests[\"Weight is correct\"] = data.weight === 1;",
+							"}",
+							"catch(e) {",
+							"    tests[\"Name is correct\"] = false;",
+							"    tests[\"Weight is correct\"] = false;",
+							"}"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{domain}}/task/{{task1}}",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "{{auth}}",
+						"description": ""
+					}
+				],
+				"body": {},
+				"description": "Retrieve data from task 1"
+			},
+			"response": []
+		},
+		{
+			"name": "Update Task Color",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status 200\"] = responseCode.code === 200;",
+							"tests[\"Successfully Updated\"] = responseBody === \"success\";"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{domain}}/task/{{task2}}",
+				"method": "PATCH",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "{{auth}}",
+						"description": ""
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"task\": {\n\t\t\"name\": \"Purchase nice leather and leather working tools\", \n\t\t\"description\": \"Get some nice leather to make my slippers out of and the tools to effectively work with it\",\n\t\t\"color\": \"#44B809\",\n\t\t\"taskList\": {{tasklist}}, \n\t\t\"weight\": 1\n\t}\n}"
+				},
+				"description": "Change the color"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Task 1 After Update",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status 200\"] = responseCode.code === 200;",
+							"",
+							"try {",
+							"    var data = JSON.parse(responseBody);",
+							"    tests[\"Name is correct\"] = data.name === \"Purchase nice leather and leather working tools\";",
+							"    tests[\"Weight is correct\"] = data.weight === 1;",
+							"    tests[\"Color is correct\"] = data.color === \"#44B809\";",
+							"}",
+							"catch(e) {",
+							"    tests[\"Name is correct\"] = false;",
+							"    tests[\"Weight is correct\"] = false;",
+							"    tests[\"Collor is correct\"] = false;",
+							"} "
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{domain}}/task/{{task2}}",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "{{auth}}",
+						"description": ""
+					}
+				],
+				"body": {},
+				"description": "Retrieve data from task 1"
+			},
+			"response": []
+		},
+		{
+			"name": "Remove Task 3",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status 200\"] = responseCode.code === 200;"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{domain}}/task/{{task3}}",
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "{{auth}}",
+						"description": ""
+					}
+				],
+				"body": {},
+				"description": "Delete it from datastore"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Task 3 After Delete",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status 200\"] = responseCode.code === 200;",
+							"",
+							"try {",
+							"    var data = JSON.parse(responseBody);",
+							"    tests[\"Name is present\"] = data.name === \"Learn how to make slippers\";",
+							"    tests[\"Weight is present\"] = data.weight === 2;",
+							"}",
+							"catch(e) {",
+							"    tests[\"Name isn't present\"] = true;",
+							"    tests[\"Weight isn't present\"] = true;",
+							"}"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{domain}}/task/{{task3}}",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "{{auth}}",
+						"description": ""
+					}
+				],
+				"body": {},
+				"description": "Retrieve data from task 3"
+			},
+			"response": []
+		},
+		{
+			"name": "Remove Task List and all Tasks in List",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status 200\"] = responseCode.code === 200;"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{domain}}/tasklist/{{tasklist}}",
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "{{auth}}",
+						"description": ""
+					}
+				],
+				"body": {},
+				"description": "Delete it from datastore"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Task 1 After Delete",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status 200\"] = responseCode.code === 200;",
+							"",
+							"try {",
+							"    var data = JSON.parse(responseBody);",
+							"    tests[\"Name is present\"] = data.name === \"Learn how to make slippers\";",
+							"    tests[\"Weight is present\"] = data.weight === 2;",
+							"}",
+							"catch(e) {",
+							"    tests[\"Name isn't present\"] = true;",
+							"    tests[\"Weight isn't present\"] = true;",
+							"}"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{domain}}/task/{{task1}}",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "{{auth}}",
+						"description": ""
+					}
+				],
+				"body": {},
+				"description": "Retrieve data from task 1"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Task List After Delete",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status 200\"] = responseCode.code === 200;",
+							"",
+							"try {",
+							"    var data = JSON.parse(responseBody);",
+							"    tests[\"Name is present\"] = data.name === \"Make Shoes\";",
+							"    tests[\"Description is present\"] = data.description === \"Craft an awesome pair of leather slippers\";",
+							"}",
+							"catch(e) {",
+							"    tests[\"Name isn't present\"] = true;",
+							"    tests[\"Description isn't present\"] = true;",
+							"}"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{domain}}/tasklist/{{tasklist}}",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "{{auth}}",
+						"description": ""
+					}
+				],
+				"body": {},
+				"description": ""
+			},
+			"response": []
+		}
+	]
+}
