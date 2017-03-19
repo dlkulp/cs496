@@ -135,12 +135,13 @@ function httpPut(res, req, entity) {
 }
 
 function httpDelete(res, req, id, kind, multiple) {
-	if (typeof req.signedCookies["access"] === "undefined") 
-		res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
-	else {
+	// if (typeof req.signedCookies["access"] === "undefined") 
+	// 	res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
+	// else {
 		console.log("delete");
 		if (typeof datastore !== "undefined") {
 			let objKey = (!!multiple) ? id : datastore.key([kind, id]);
+			console.log(JSON.stringify(objKey));
 			datastore.delete(objKey)
 				.then(() => {
 					res.status(200).send("success");
@@ -152,7 +153,7 @@ function httpDelete(res, req, id, kind, multiple) {
 		}
 		else
 			res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
-	}
+	//}
 }
 
 function httpPatch(res, req, entity) {
@@ -287,7 +288,8 @@ app.route('/tasklist/:tasklistId')
 	.delete((req, res) => {
 		let tasklistId = Number(req.params.tasklistId);
 		// Get all tasks in tasklist and remove them all
-		const query = datastore.createQuery("Task").filter("taskList", "=", tasklistId);
+		const query = datastore.createQuery("Task").filter("taskList", "=", `/tasklist/${tasklistId}`);
+		console.log(JSON.stringify(query));
 		datastore.runQuery(query)
 			.then((entities) => {
 				let keys = [];
@@ -295,6 +297,7 @@ app.route('/tasklist/:tasklistId')
 				for (entity of entities[0])
 					keys.push(entity.key);
 				keys.push(datastore.key(["TaskList", tasklistId]));
+				console.log(keys.length);
 				httpDelete(res, req, keys, "TaskList", true);
 			})
 			.catch((e) => {
