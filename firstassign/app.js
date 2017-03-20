@@ -56,7 +56,7 @@ function httpGet(res, req, id, kind) {
 			let objKey = datastore.key([kind, id]);
 			datastore.get(objKey)
 				.then((entities) => {
-					res.status(200).send((!!multiple) ? entities : entities[0]);
+					res.status(200).send(entities[0]);
 				})
 				.catch((e) => {
 					console.dir(e);
@@ -211,15 +211,138 @@ app.get("/signout", (req, res) => {
 app.route('/task/:taskId')
 	.get((req, res) => {
 		let taskId = Number(req.params.taskId);
-		httpGet(res, req, taskId, "Task");
+		if (typeof req.signedCookies["access"] === "undefined") 
+			res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
+		else {
+			console.log("get");
+			let cookieData = JSON.parse(req.signedCookies["access"]);
+			if (typeof datastore !== "undefined") {
+				let objKey = datastore.key(["Task", taskId]);
+				// Get task
+				datastore.get(objKey)
+					.then((tasks) => {
+						if (typeof tasks[0] == "undefined" || tasks[0].length == 0)
+							res.status(404).send(`Unable to find entity ${taskId}`);
+						else {
+							let id = Number(tasks[0].taskList.substr(10));
+							let key = datastore.key(["TaskList", id]);
+							// Check list for user permisions
+							datastore.get(key)
+								.then((tasklist) => {
+									// Send data if correct
+									if (typeof tasklist[0] == "undefined" || tasklist[0].length == 0)
+										res.status(404).send(`Unable to find entity ${taskId}`);
+									else {
+										if (tasklist[0].user == cookieData.user.id_token.email)
+											res.status(200).send(tasks[0]);
+										else
+											res.status(403).send(`You are not authorized to view this data!<br/>Currently signed in as: ${tasklist[0].user}`);
+									}
+								})
+								.catch((e) => {
+									console.dir(e);
+									res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+								});
+						}
+					})
+					.catch((e) => {
+						console.dir(e);
+						res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+					});
+			}
+			else
+				res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		}
 	})
 	.delete((req, res) => {
 		let taskId = Number(req.params.taskId);
-		httpDelete(res, req, taskId, "Task");
+		if (typeof req.signedCookies["access"] === "undefined") 
+			res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
+		else {
+			console.log("get");
+			let cookieData = JSON.parse(req.signedCookies["access"]);
+			if (typeof datastore !== "undefined") {
+				let objKey = datastore.key(["Task", taskId]);
+				// Get task
+				datastore.get(objKey)
+					.then((tasks) => {
+						if (typeof tasks[0] == "undefined" || tasks[0].length == 0)
+							res.status(404).send(`Unable to find entity ${taskId}`);
+						else {
+							let id = Number(tasks[0].taskList.substr(10));
+							let key = datastore.key(["TaskList", id]);
+							// Check list for user permisions
+							datastore.get(key)
+								.then((tasklist) => {
+									// Send data if correct
+									if (typeof tasklist[0] == "undefined" || tasklist[0].length == 0)
+										res.status(404).send(`Unable to find entity ${taskId}`);
+									else {
+										if (tasklist[0].user == cookieData.user.id_token.email)
+											httpDelete(res, req, taskId, "Task");
+										else
+											res.status(403).send(`You are not authorized to view this data!<br/>Currently signed in as: ${tasklist[0].user}`);
+									}
+								})
+								.catch((e) => {
+									console.dir(e);
+									res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+								});
+						}
+					})
+					.catch((e) => {
+						console.dir(e);
+						res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+					});
+			}
+			else
+				res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		}
 	})
 	.patch((req, res) => {
 		let [taskData, taskId] = [req.body.task, Number(req.params.taskId)];
-		httpPatch(res, req, new Entity("Task", new Task(taskData.name, taskData.description, taskData.color, taskData.taskList, taskData.weight), taskId));
+		if (typeof req.signedCookies["access"] === "undefined") 
+			res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
+		else {
+			console.log("get");
+			let cookieData = JSON.parse(req.signedCookies["access"]);
+			if (typeof datastore !== "undefined") {
+				let objKey = datastore.key(["Task", taskId]);
+				// Get task
+				datastore.get(objKey)
+					.then((tasks) => {
+						if (typeof tasks[0] == "undefined" || tasks[0].length == 0)
+							res.status(404).send(`Unable to find entity ${taskId}`);
+						else {
+							let id = Number(tasks[0].taskList.substr(10));
+							let key = datastore.key(["TaskList", id]);
+							// Check list for user permisions
+							datastore.get(key)
+								.then((tasklist) => {
+									// Send data if correct
+									if (typeof tasklist[0] == "undefined" || tasklist[0].length == 0)
+										res.status(404).send(`Unable to find entity ${taskId}`);
+									else {
+										if (tasklist[0].user == cookieData.user.id_token.email)
+											httpPatch(res, req, new Entity("Task", new Task(taskData.name, taskData.description, taskData.color, taskData.taskList, taskData.weight), taskId));
+										else
+											res.status(403).send(`You are not authorized to view this data!<br/>Currently signed in as: ${tasklist[0].user}`);
+									}
+								})
+								.catch((e) => {
+									console.dir(e);
+									res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+								});
+						}
+					})
+					.catch((e) => {
+						console.dir(e);
+						res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+					});
+			}
+			else
+				res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		}
 	});
 app.route('/tasks')
 	.post((req, res) => {
@@ -235,29 +358,132 @@ app.route('/tasks')
 app.route('/tasklist/:tasklistId')
 	.get((req, res) => {
 		let tasklistId = Number(req.params.tasklistId);
-		httpGet(res, req, tasklistId, "TaskList");
+		if (typeof req.signedCookies["access"] === "undefined") 
+			res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
+		else {
+			console.log("get");
+			let cookieData = JSON.parse(req.signedCookies["access"]);
+			if (typeof datastore !== "undefined") {
+				let objKey = datastore.key(["TaskList", tasklistId]);
+				// Get task list
+				datastore.get(objKey)
+					.then((entities) => {
+						if (typeof entities[0] == "undefined" || entities[0].length == 0)
+							res.status(404).send(`Unable to find entity ${tasklistId}`);
+						else {
+							let list = entities[0];
+							// Check user email
+							if (list.user == cookieData.user.id_token.email) {
+								const query = datastore.createQuery("Task").filter("taskList", "=", `/tasklist/${tasklistId}`);
+								// Get tasks in list and send everything
+								datastore.runQuery(query)
+									.then((entities) => {
+										if (typeof entities[0] == "undefined" || entities[0].length == 0)
+											res.status(200).send(list);
+										else {
+											list.tasks = entities[0];
+											res.status(200).send(list);
+										}
+									})
+									.catch((e) => {
+										console.dir(e);
+										res.status(500).send("Unexpected Error: 1001: Unable to connect to database<br />" + JSON.stringify(e));
+									});
+							}
+							else
+								res.status(403).send(`You are not authorized to view this data!<br/>Currently signed in as: ${list.user}`);
+						}
+					})
+					.catch((e) => {
+						console.dir(e);
+						res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+					});
+			}
+			else
+				res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		}
 	})
 	.delete((req, res) => {
 		let tasklistId = Number(req.params.tasklistId);
-		// Get all tasks in tasklist and remove them all
-		const query = datastore.createQuery("Task").filter("taskList", "=", `/tasklist/${tasklistId}`);
-		console.log(JSON.stringify(query));
-		datastore.runQuery(query)
-			.then((entities) => {
-				var keys = [];
-				for (let entity of entities[0])
-					keys.push(entity[datastore.KEY]);
-				keys.push(datastore.key(["TaskList", tasklistId]));
-				httpDelete(res, req, keys, "TaskList", true);
-			})
-			.catch((e) => {
-				console.dir(e);
-				res.status(500).send("Unexpected Error: 1001: Unable to connect to database<br />" + JSON.stringify(e));
-			});
+		if (typeof req.signedCookies["access"] === "undefined") 
+			res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
+		else {
+			console.log("get");
+			let cookieData = JSON.parse(req.signedCookies["access"]);
+			if (typeof datastore !== "undefined") {
+				let objKey = datastore.key(["TaskList", tasklistId]);
+				// Get task list
+				datastore.get(objKey)
+					.then((entities) => {
+						if (typeof entities[0] == "undefined" || entities[0].length == 0)
+							res.status(404).send(`Unable to find entity ${taskId}`);
+						else {
+							let list = entities[0];
+							// Check user email
+							if (list.user == cookieData.user.id_token.email) {
+								// Get all tasks in tasklist and remove them all
+								const query = datastore.createQuery("Task").filter("taskList", "=", `/tasklist/${tasklistId}`);
+								datastore.runQuery(query)
+									.then((entities) => {
+										if (typeof entities[0] == "undefined" || entities[0].length == 0)
+											res.status(404).send(`Unable to find entity ${taskId}`);
+										else {
+											var keys = [];
+											for (let entity of entities[0])
+												keys.push(entity[datastore.KEY]);
+											keys.push(datastore.key(["TaskList", tasklistId]));
+											httpDelete(res, req, keys, "TaskList", true);
+										}
+									})
+									.catch((e) => {
+										console.dir(e);
+										res.status(500).send("Unexpected Error: 1001: Unable to connect to database<br />" + JSON.stringify(e));
+									});
+							}
+							else
+								res.status(403).send(`You are not authorized to view this data!<br/>Currently signed in as: ${list.user}`);
+						}
+					})
+					.catch((e) => {
+						console.dir(e);
+						res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+					});
+			}
+			else
+				res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		}
 	})
 	.patch((req, res) => {
 		let [taskListData, tasklistId] = [req.body.taskList, Number(req.params.tasklistId)];
-		httpPatch(res, req, new Entity("TaskList", new TaskList(taskListData.name, taskListData.description, taskListData.user, taskListData.completeBy), tasklistId));
+		if (typeof req.signedCookies["access"] === "undefined") 
+			res.status(401).send("You are not signed in!  Please <a href='/login'>sign in</a> and try again!");
+		else {
+			console.log("get");
+			let cookieData = JSON.parse(req.signedCookies["access"]);
+			if (typeof datastore !== "undefined") {
+				let objKey = datastore.key(["TaskList", tasklistId]);
+				// Get task list
+				datastore.get(objKey)
+					.then((entities) => {
+						if (typeof entities[0] == "undefined" || entities[0].length == 0)
+							res.status(404).send(`Unable to find entity ${taskId}`);
+						else {
+							let list = entities[0];
+							// Check user email
+							if (list.user == cookieData.user.id_token.email)
+								httpPatch(res, req, new Entity("TaskList", new TaskList(taskListData.name, taskListData.description, taskListData.user, taskListData.completeBy), tasklistId));
+							else
+								res.status(403).send(`You are not authorized to view this data!<br/>Currently signed in as: ${list.user}`);
+						}
+					})
+					.catch((e) => {
+						console.dir(e);
+						res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+					});
+			}
+			else
+				res.status(500).send("Unexpected Error: 1001: Unable to connect to database");
+		}
 	});
 app.route('/tasklists')
 	.post((req, res) => {
